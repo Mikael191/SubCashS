@@ -7,6 +7,7 @@ function AdminPanel() {
   const [orders, setOrders] = useState([]);
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [totalRevenue, setTotalRevenue] = useState(0);
 
   const ADMIN_PASSWORD = 'subcash2025';
 
@@ -15,13 +16,30 @@ function AdminPanel() {
       // Load initial orders
       loadOrders();
       
+      // Load initial revenue
+      const fetchRevenue = async () => {
+        const revenue = await OrderManager.getTotalRevenue();
+        setTotalRevenue(revenue);
+      };
+      fetchRevenue();
+      
       // Poll for updates every 2 seconds
       const interval = setInterval(() => {
         loadOrders();
+        // Update revenue
+        OrderManager.getTotalRevenue().then(revenue => {
+          setTotalRevenue(revenue);
+        });
       }, 2000);
       
       // Listen for localStorage changes (legacy support)
-      const handleChange = () => loadOrders();
+      const handleChange = () => {
+        loadOrders();
+        // Update revenue
+        OrderManager.getTotalRevenue().then(revenue => {
+          setTotalRevenue(revenue);
+        });
+      };
       window.addEventListener('ordersChanged', handleChange);
       window.addEventListener('storage', handleChange);
       
@@ -77,8 +95,8 @@ function AdminPanel() {
     }
   };
 
-  const getTotalRevenue = async () => {
-    return await OrderManager.getTotalRevenue();
+  const getOrdersByStatus = (status) => {
+    return orders.filter(order => order.status === status).length;
   };
 
   // Admin Dashboard
@@ -131,7 +149,7 @@ function AdminPanel() {
           <motion.div whileHover={{ scale: 1.02 }} className="bg-gradient-to-br from-yellow-600 to-yellow-700 p-4 md:p-6 rounded-2xl">
             <FaDollarSign className="text-3xl md:text-4xl mb-2 md:mb-3 text-white" />
             <p className="text-white/80 text-sm mb-1">Faturamento Total</p>
-            <p className="text-2xl md:text-3xl font-black text-white">R$ {getTotalRevenue().toFixed(2).replace('.', ',')}</p>
+            <p className="text-2xl md:text-3xl font-black text-white">R$ {totalRevenue.toFixed(2).replace('.', ',')}</p>
           </motion.div>
 
           <motion.div whileHover={{ scale: 1.02 }} className="bg-gradient-to-br from-blue-600 to-blue-700 p-4 md:p-6 rounded-2xl">
