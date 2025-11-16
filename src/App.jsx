@@ -197,6 +197,23 @@ function App() {
     
     // Save using cross-device order system
     const success = CrossDeviceOrder.saveOrder(newOrder);
+    
+    console.log('💾 Resultado do salvamento:', success);
+    
+    if (success) {
+      // Update order ID for tracking
+      setCurrentOrderId(newOrder.id);
+      
+      console.log('✅ Pedido salvo com sucesso! ID:', newOrder.id);
+      
+      // Show success
+      setCheckoutStep('success');
+      
+      // Clear cart after successful order
+      setCart([]);
+    } else {
+      alert('❌ Erro ao salvar pedido. Tente novamente.');
+    }
   };
 
   const getCurrentOrder = () => {
