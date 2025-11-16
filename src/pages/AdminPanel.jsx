@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FaUserShield, FaSignOutAlt, FaBox, FaDollarSign, FaChartLine, FaTruck, FaCheckCircle, FaPhone, FaClock, FaMapMarkerAlt, FaCreditCard, FaCheck, FaTrash, FaTimes, FaBroom } from 'react-icons/fa';
-import { OrderManager, SyncService } from '../utils/dataManager';
+import { OrderManager, CrossDeviceSync } from '../utils/dataManager';
 
 function AdminPanel() {
   const [orders, setOrders] = useState([]);
@@ -15,23 +15,10 @@ function AdminPanel() {
       // Load initial orders
       loadOrders();
       
-      // Listen for real-time sync updates
-      const unsubscribe = SyncService.onSync((syncedOrders) => {
-        console.log('🔄 Orders synced from another device:', syncedOrders.length);
-        setOrders(syncedOrders);
-      });
-      
-      // Poll every 1 second as aggressive backup
+      // Poll for updates every 2 seconds
       const interval = setInterval(() => {
-        const freshOrders = SyncService.getOrders();
-        const currentOrders = orders;
-        
-        // Only update if different
-        if (JSON.stringify(freshOrders) !== JSON.stringify(currentOrders)) {
-          console.log('🔍 Poll detected order changes');
-          setOrders(freshOrders);
-        }
-      }, 1000);
+        loadOrders();
+      }, 2000);
       
       // Listen for localStorage changes (legacy support)
       const handleChange = () => loadOrders();
@@ -39,7 +26,6 @@ function AdminPanel() {
       window.addEventListener('storage', handleChange);
       
       return () => {
-        if (unsubscribe) unsubscribe();
         clearInterval(interval);
         window.removeEventListener('ordersChanged', handleChange);
         window.removeEventListener('storage', handleChange);
@@ -66,28 +52,24 @@ function AdminPanel() {
     setIsAuthenticated(false);
   };
 
-  const updateStatus = (orderId, newStatus) => {
-    // Update via sync service for cross-device sync
-    SyncService.updateOrderStatus(orderId, newStatus);
-    // Update via OrderManager as backup
-    OrderManager.updateOrderStatus(orderId, newStatus);
+  const updateStatus = async (orderId, newStatus) => {
+    // Update via OrderManager (which uses cross-device sync)
+    await OrderManager.updateOrderStatus(orderId, newStatus);
     loadOrders();
   };
 
-  const rejectOrder = (orderId) => {
+  const rejectOrder = async (orderId) => {
     if (confirm('❌ Tem certeza que deseja recusar este pedido?')) {
-      // Reject via sync service for cross-device sync
-      SyncService.rejectOrder(orderId, 'Pedido recusado pela loja');
-      // Reject via OrderManager as backup
-      OrderManager.rejectOrder(orderId, 'Pedido recusado pela loja');
+      // Reject via OrderManager (which uses cross-device sync)
+      await OrderManager.rejectOrder(orderId, 'Pedido recusado pela loja');
       loadOrders();
     }
   };
 
-  const clearOrders = () => {
+  const clearOrders = async () => {
     if (confirm('🧹 Limpar pedidos concluídos e recusados?\n\nA receita será salva no histórico!')) {
-      // Clear via OrderManager
-      const result = OrderManager.clearCompletedOrders();
+      // Clear via OrderManager (which uses cross-device sync)
+      const result = await OrderManager.clearCompletedOrders();
       if (result.success) {
         alert(`✅ ${result.clearedCount} pedidos limpos!\n💰 R$ ${result.savedRevenue.toFixed(2)} salvo no histórico.`);
         loadOrders();
@@ -95,42 +77,9 @@ function AdminPanel() {
     }
   };
 
-  const getTotalRevenue = () => {
-    return OrderManager.getTotalRevenue();
+  const getTotalRevenue = async () => {
+    return await OrderManager.getTotalRevenue();
   };
-
-  const getOrdersByStatus = (status) => {
-    return orders.filter(order => order.status === status).length;
-  };
-
-  // Login Screen
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-br from-gray-900 to-black border-2 border-yellow-500/30 rounded-2xl p-6 md:p-8 w-full max-w-md">
-          <div className="text-center mb-6 md:mb-8">
-            <FaUserShield className="text-4xl md:text-6xl text-yellow-400 mx-auto mb-3 md:mb-4" />
-            <h1 className="text-2xl md:text-3xl font-black text-white mb-1 md:mb-2">Painel Administrativo</h1>
-            <p className="text-yellow-400 text-sm">SubCashS</p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Digite a senha"
-              className="w-full px-3 py-2 md:px-4 md:py-3 bg-black border-2 border-gray-700 rounded-xl text-white focus:outline-none focus:border-yellow-500"
-              autoFocus
-            />
-            <button type="submit" className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-black py-3 md:py-4 rounded-xl font-bold hover:from-yellow-500 hover:to-yellow-600">
-              Entrar
-            </button>
-          </form>
-        </motion.div>
-      </div>
-    );
-  }
 
   // Admin Dashboard
   return (
