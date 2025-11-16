@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUser, FaSignOutAlt, FaShoppingBag, FaTruck, FaCheckCircle, FaClock, FaPhone, FaMapMarkerAlt, FaEdit, FaShoppingCart, FaBox } from 'react-icons/fa';
-import { UserManager, OrderManager } from '../utils/dataManager';
-import { DirectSync } from '../utils/directSync';
+import { UserManager } from '../utils/dataManager';
+import { getOrders } from '../utils/simpleOrder';
 import { useNavigate } from 'react-router-dom';
 
 function CustomerPanel() {
@@ -23,31 +23,34 @@ function CustomerPanel() {
     setUser(currentUser);
     loadOrders(currentUser.id);
 
-    // Auto-refresh a cada 500ms for better responsiveness
+    // Auto-refresh a cada 3 segundos for better responsiveness
     const interval = setInterval(() => {
       loadOrders(currentUser.id);
       setForceUpdate(prev => prev + 1);
-    }, 500);
+    }, 3000);
 
-    // Listen for direct order changes
+    // Listen for storage changes
     const handleChange = () => {
       loadOrders(currentUser.id);
     };
-    window.addEventListener('directOrdersUpdate', handleChange);
     window.addEventListener('storage', handleChange);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('directOrdersUpdate', handleChange);
       window.removeEventListener('storage', handleChange);
     };
   }, [navigate]);
 
   const loadOrders = (userId) => {
-    // Use DirectSync for more reliable order loading
-    const allOrders = DirectSync.getOrders();
-    const userOrders = allOrders.filter(order => order.userId === userId);
-    setOrders(userOrders.sort((a, b) => b.id - a.id));
+    // Use simple order loading
+    try {
+      const allOrders = getOrders();
+      const userOrders = allOrders.filter(order => order.userId === userId);
+      setOrders(userOrders.sort((a, b) => b.id - a.id));
+    } catch (error) {
+      console.error('Error loading orders:', error);
+      setOrders([]);
+    }
   };
 
   const handleLogout = () => {

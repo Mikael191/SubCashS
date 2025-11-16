@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { FaShoppingCart, FaBars, FaTimes, FaPen, FaBook, FaCoffee, FaSnowflake, FaUtensils, FaPaperclip, FaMapMarkerAlt, FaPhone, FaEnvelope, FaClock, FaStar, FaArrowRight, FaTag, FaTrash, FaPlus, FaMinus, FaTruck, FaCreditCard, FaCheckCircle, FaUserShield, FaSignOutAlt, FaBox, FaDollarSign, FaChartLine, FaEye, FaCheck, FaUser, FaEdit } from 'react-icons/fa';
-import { OrderManager, UserManager } from './utils/dataManager';
-import { DirectSync } from './utils/directSync';
+import { UserManager } from './utils/dataManager';
+import { saveOrder } from './utils/simpleOrder';
 import { useNavigate } from 'react-router-dom';
 
 function App() {
@@ -74,12 +74,9 @@ function App() {
   useEffect(() => {
     if (currentOrderId && showOrderTracking) {
       const interval = setInterval(() => {
-        const updatedOrder = OrderManager.getOrderById(currentOrderId);
-        if (updatedOrder) {
-          // Forçar atualização do componente
-          setForceUpdate(prev => prev + 1);
-        }
-      }, 1000); // Atualiza a cada 1 segundo
+        // Simple refresh
+        setForceUpdate(prev => prev + 1);
+      }, 2000); // Atualiza a cada 2 segundos
       return () => clearInterval(interval);
     }
   }, [currentOrderId, showOrderTracking]);
@@ -198,34 +195,19 @@ function App() {
     
     console.log('📋 Pedido criado:', newOrder);
     
-    // Save using DirectSync for reliability
-    const success = DirectSync.saveOrder(newOrder);
-    
-    console.log('💾 Resultado do salvamento:', success);
-    
-    if (success) {
-      // Update order ID for tracking
-      setCurrentOrderId(newOrder.id);
-      
-      // Notify all listeners
-      DirectSync.notifyChange();
-      
-      console.log('✅ Pedido salvo com sucesso! ID:', newOrder.id);
-      
-      // Show success
-      setCheckoutStep('success');
-      
-      // Clear cart after successful order
-      setCart([]);
-    } else {
-      alert('❌ Erro ao salvar pedido. Tente novamente.');
-    }
+    // Save using simple order system
+    const success = saveOrder(newOrder);
   };
 
   const getCurrentOrder = () => {
-    // Sempre buscar dados atualizados do localStorage
-    const freshOrder = OrderManager.getOrderById(currentOrderId);
-    return freshOrder;
+    // Simple order loading
+    try {
+      const saved = localStorage.getItem('subcashs_orders');
+      const orders = saved ? JSON.parse(saved) : [];
+      return orders.find(order => order.id === currentOrderId);
+    } catch (error) {
+      return null;
+    }
   };
 
   const getOrderStatusText = (status) => {

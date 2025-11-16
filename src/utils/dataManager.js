@@ -1,19 +1,25 @@
 // Sistema centralizado de gerenciamento de pedidos
-import { DirectSync } from './directSync';
+// Simplified version using localStorage only
 
 export const OrderManager = {
   // Salvar pedido
   saveOrder(order) {
     try {
-      // Save to direct sync service
-      const success = DirectSync.saveOrder(order);
+      // Simple localStorage approach
+      const saved = localStorage.getItem('subcashs_orders');
+      const orders = saved ? JSON.parse(saved) : [];
       
-      console.log('✅ Pedido salvo diretamente:', order.id);
+      // Remove any existing order with same ID
+      const filtered = orders.filter(o => o.id !== order.id);
       
-      // Disparar evento para TODAS as janelas/abas
-      DirectSync.notifyChange();
+      // Add new order at the beginning
+      const newOrders = [order, ...filtered];
       
-      return success;
+      // Save back to localStorage
+      localStorage.setItem('subcashs_orders', JSON.stringify(newOrders));
+      
+      console.log('✅ Pedido salvo:', order.id);
+      return true;
     } catch (error) {
       console.error('❌ Erro ao salvar pedido:', error);
       return false;
@@ -23,9 +29,8 @@ export const OrderManager = {
   // Buscar todos os pedidos
   getOrders() {
     try {
-      // Get from direct sync service
-      const orders = DirectSync.getOrders();
-      return orders;
+      const saved = localStorage.getItem('subcashs_orders');
+      return saved ? JSON.parse(saved) : [];
     } catch (error) {
       console.error('❌ Erro ao carregar pedidos:', error);
       return [];
@@ -35,15 +40,14 @@ export const OrderManager = {
   // Atualizar status do pedido
   updateOrderStatus(orderId, newStatus) {
     try {
-      // Update via direct sync service
-      const success = DirectSync.updateOrderStatus(orderId, newStatus);
+      const orders = this.getOrders();
+      const updated = orders.map(order => 
+        order.id === orderId ? { ...order, status: newStatus } : order
+      );
+      localStorage.setItem('subcashs_orders', JSON.stringify(updated));
       
-      console.log('✅ Status atualizado diretamente:', orderId, '->', newStatus);
-      
-      // Notificar mudanças
-      DirectSync.notifyChange();
-      
-      return success;
+      console.log('✅ Status atualizado:', orderId, '->', newStatus);
+      return true;
     } catch (error) {
       console.error('❌ Erro ao atualizar status:', error);
       return false;
@@ -65,14 +69,14 @@ export const OrderManager = {
   // Recusar pedido
   rejectOrder(orderId, reason = 'Pedido recusado pela loja') {
     try {
-      // Reject via direct sync service
-      const success = DirectSync.rejectOrder(orderId, reason);
+      const orders = this.getOrders();
+      const updated = orders.map(order => 
+        order.id === orderId ? { ...order, status: 'rejected' } : order
+      );
+      localStorage.setItem('subcashs_orders', JSON.stringify(updated));
       
-      console.log('❌ Pedido recusado diretamente:', orderId);
-      
-      DirectSync.notifyChange();
-      
-      return success;
+      console.log('❌ Pedido recusado:', orderId);
+      return true;
     } catch (error) {
       console.error('❌ Erro ao recusar pedido:', error);
       return false;
@@ -82,14 +86,34 @@ export const OrderManager = {
   // Limpar pedidos concluídos e recusados (mantém receita)
   clearCompletedOrders() {
     try {
-      const result = DirectSync.clearCompletedOrders();
+      const orders = this.getOrders();
       
-      if (result.success) {
-        console.log('🧹 Pedidos limpos diretamente. Receita salva:', result.savedRevenue);
-        DirectSync.notifyChange();
-      }
+      // Calculate revenue from completed orders
+      const completedRevenue = orders
+        .filter(order => order.status === 'completed')
+        .reduce((sum, order) => sum + order.total, 0);
       
-      return result;
+      // Add to historical revenue
+      const currentHistorical = this.getHistoricalRevenue();
+      const newHistorical = currentHistorical + completedRevenue;
+      localStorage.setItem('subcashs_historical_revenue', JSON.stringify(newHistorical));
+      
+      // Keep only active orders
+      const activeOrders = orders.filter(order => 
+        order.status === 'pending' || 
+        order.status === 'preparing' || 
+        order.status === 'delivering'
+      );
+      
+      localStorage.setItem('subcashs_orders', JSON.stringify(activeOrders));
+      
+      console.log('🧹 Pedidos limpos. Receita salva:', completedRevenue);
+      
+      return {
+        success: true,
+        clearedCount: orders.length - activeOrders.length,
+        savedRevenue: completedRevenue
+      };
     } catch (error) {
       console.error('❌ Erro ao limpar pedidos:', error);
       return { success: false };
@@ -99,7 +123,9 @@ export const OrderManager = {
   // Adicionar à receita histórica
   addToHistoricalRevenue(amount) {
     try {
-      const newTotal = DirectSync.addToHistoricalRevenue(amount);
+      const current = this.getHistoricalRevenue();
+      const newTotal = current + amount;
+      localStorage.setItem('subcashs_historical_revenue', JSON.stringify(newTotal));
       return newTotal;
     } catch (error) {
       console.error('❌ Erro ao salvar receita:', error);
@@ -110,8 +136,8 @@ export const OrderManager = {
   // Buscar receita histórica
   getHistoricalRevenue() {
     try {
-      const revenue = DirectSync.getHistoricalRevenue();
-      return revenue;
+      const saved = localStorage.getItem('subcashs_historical_revenue');
+      return saved ? JSON.parse(saved) : 0;
     } catch (error) {
       return 0;
     }
@@ -129,7 +155,11 @@ export const OrderManager = {
 
   // Criar evento customizado para notificar mudanças
   notifyChange() {
-    DirectSync.notifyChange();
+    // Simple notification
+    const event = new CustomEvent('ordersChanged', {
+      detail: { timestamp: Date.now() }
+    });
+    window.dispatchEvent(event);
   }
 };
 
