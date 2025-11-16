@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FaUserShield, FaSignOutAlt, FaBox, FaDollarSign, FaChartLine, FaTruck, FaCheckCircle, FaPhone, FaClock, FaMapMarkerAlt, FaCreditCard, FaCheck, FaTrash, FaTimes, FaBroom } from 'react-icons/fa';
-import { OrderManager, RealtimeApi } from '../utils/dataManager';
+import { OrderManager, SyncService } from '../utils/dataManager';
 
 function AdminPanel() {
   const [orders, setOrders] = useState([]);
@@ -15,27 +15,25 @@ function AdminPanel() {
       // Load initial orders
       loadOrders();
       
-      // Listen for real-time updates from central storage
-      const unsubscribe = RealtimeApi.listenForUpdates((updatedOrders) => {
-        console.log('🔄 Pedidos atualizados via armazenamento central:', updatedOrders.length);
-        // Only update if there are actually new orders
-        const currentOrders = OrderManager.getOrders();
-        if (JSON.stringify(currentOrders) !== JSON.stringify(updatedOrders)) {
-          setOrders(updatedOrders);
-        }
+      // Listen for real-time sync updates
+      const unsubscribe = SyncService.onSync((syncedOrders) => {
+        console.log('🔄 Orders synced from another device:', syncedOrders.length);
+        setOrders(syncedOrders);
       });
       
-      // Poll every 2 seconds as backup
+      // Poll every 1 second as aggressive backup
       const interval = setInterval(() => {
-        RealtimeApi.getOrders().then(freshOrders => {
-          const currentOrders = OrderManager.getOrders();
-          if (JSON.stringify(currentOrders) !== JSON.stringify(freshOrders)) {
-            setOrders(freshOrders);
-          }
-        });
-      }, 2000);
+        const freshOrders = SyncService.getOrders();
+        const currentOrders = orders;
+        
+        // Only update if different
+        if (JSON.stringify(freshOrders) !== JSON.stringify(currentOrders)) {
+          console.log('🔍 Poll detected order changes');
+          setOrders(freshOrders);
+        }
+      }, 1000);
       
-      // Listen for localStorage changes (for same device)
+      // Listen for localStorage changes (legacy support)
       const handleChange = () => loadOrders();
       window.addEventListener('ordersChanged', handleChange);
       window.addEventListener('storage', handleChange);
@@ -47,7 +45,7 @@ function AdminPanel() {
         window.removeEventListener('storage', handleChange);
       };
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, orders]);
 
   const loadOrders = () => {
     const freshOrders = OrderManager.getOrders();
@@ -69,18 +67,18 @@ function AdminPanel() {
   };
 
   const updateStatus = (orderId, newStatus) => {
-    // Update in central storage
-    RealtimeApi.updateOrderStatus(orderId, newStatus);
-    // Update local storage as fallback
+    // Update via sync service for cross-device sync
+    SyncService.updateOrderStatus(orderId, newStatus);
+    // Update via OrderManager as backup
     OrderManager.updateOrderStatus(orderId, newStatus);
     loadOrders();
   };
 
   const rejectOrder = (orderId) => {
     if (confirm('❌ Tem certeza que deseja recusar este pedido?')) {
-      // Reject in central storage
-      RealtimeApi.rejectOrder(orderId, 'Pedido recusado pela loja');
-      // Reject in local storage as fallback
+      // Reject via sync service for cross-device sync
+      SyncService.rejectOrder(orderId, 'Pedido recusado pela loja');
+      // Reject via OrderManager as backup
       OrderManager.rejectOrder(orderId, 'Pedido recusado pela loja');
       loadOrders();
     }
@@ -88,7 +86,7 @@ function AdminPanel() {
 
   const clearOrders = () => {
     if (confirm('🧹 Limpar pedidos concluídos e recusados?\n\nA receita será salva no histórico!')) {
-      // Clear in central storage
+      // Clear via OrderManager
       const result = OrderManager.clearCompletedOrders();
       if (result.success) {
         alert(`✅ ${result.clearedCount} pedidos limpos!\n💰 R$ ${result.savedRevenue.toFixed(2)} salvo no histórico.`);

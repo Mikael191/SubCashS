@@ -1,29 +1,24 @@
 // Sistema centralizado de gerenciamento de pedidos
-import { RealtimeApi } from './realtimeApi';
+import { SyncService } from './syncService';
 
 export const OrderManager = {
   // Salvar pedido
   saveOrder(order) {
     try {
+      // Save to sync service for cross-device sync
+      const success = SyncService.saveOrder(order);
+      
+      // Also save to local storage as backup
       const orders = this.getOrders();
       const newOrders = [order, ...orders];
       localStorage.setItem('subcashs_orders', JSON.stringify(newOrders));
-      console.log('✅ Pedido salvo localmente:', order.id);
-      console.log('📦 Total de pedidos locais:', newOrders.length);
       
-      // Também salvar no armazenamento central para sincronização
-      RealtimeApi.saveOrder(order);
+      console.log('✅ Pedido salvo localmente e sincronizado:', order.id);
       
       // Disparar evento para TODAS as janelas/abas
       this.notifyChange();
       
-      // Disparar evento de storage para outras abas
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: 'subcashs_orders',
-        newValue: JSON.stringify(newOrders)
-      }));
-      
-      return true;
+      return success;
     } catch (error) {
       console.error('❌ Erro ao salvar pedido:', error);
       return false;
@@ -33,38 +28,39 @@ export const OrderManager = {
   // Buscar todos os pedidos
   getOrders() {
     try {
-      const saved = localStorage.getItem('subcashs_orders');
-      const orders = saved ? JSON.parse(saved) : [];
-      return orders;
+      // Get from sync service for cross-device consistency
+      return SyncService.getOrders();
     } catch (error) {
       console.error('❌ Erro ao carregar pedidos:', error);
-      return [];
+      // Fallback to local storage
+      try {
+        const saved = localStorage.getItem('subcashs_orders');
+        return saved ? JSON.parse(saved) : [];
+      } catch (localError) {
+        return [];
+      }
     }
   },
 
   // Atualizar status do pedido
   updateOrderStatus(orderId, newStatus) {
     try {
+      // Update via sync service for cross-device sync
+      const success = SyncService.updateOrderStatus(orderId, newStatus);
+      
+      // Also update local storage as backup
       const orders = this.getOrders();
       const updated = orders.map(order => 
         order.id === orderId ? { ...order, status: newStatus, updatedAt: new Date().toISOString() } : order
       );
       localStorage.setItem('subcashs_orders', JSON.stringify(updated));
-      console.log('✅ Status atualizado localmente:', orderId, '->', newStatus);
       
-      // Também atualizar no armazenamento central
-      RealtimeApi.updateOrderStatus(orderId, newStatus);
+      console.log('✅ Status atualizado localmente e sincronizado:', orderId, '->', newStatus);
       
       // Notificar mudanças
       this.notifyChange();
       
-      // Disparar evento de storage
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: 'subcashs_orders',
-        newValue: JSON.stringify(updated)
-      }));
-      
-      return true;
+      return success;
     } catch (error) {
       console.error('❌ Erro ao atualizar status:', error);
       return false;
@@ -86,24 +82,21 @@ export const OrderManager = {
   // Recusar pedido
   rejectOrder(orderId, reason = 'Pedido recusado pela loja') {
     try {
+      // Reject via sync service for cross-device sync
+      const success = SyncService.rejectOrder(orderId, reason);
+      
+      // Also update local storage as backup
       const orders = this.getOrders();
       const updated = orders.map(order => 
         order.id === orderId ? { ...order, status: 'rejected', rejectedAt: new Date().toISOString(), rejectionReason: reason } : order
       );
       localStorage.setItem('subcashs_orders', JSON.stringify(updated));
-      console.log('❌ Pedido recusado localmente:', orderId);
       
-      // Também recusar no armazenamento central
-      RealtimeApi.rejectOrder(orderId, reason);
+      console.log('❌ Pedido recusado localmente e sincronizado:', orderId);
       
       this.notifyChange();
       
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: 'subcashs_orders',
-        newValue: JSON.stringify(updated)
-      }));
-      
-      return true;
+      return success;
     } catch (error) {
       console.error('❌ Erro ao recusar pedido:', error);
       return false;

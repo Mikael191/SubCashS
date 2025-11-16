@@ -200,9 +200,6 @@ function App() {
     // Save using OrderManager for reliability
     const success = OrderManager.saveOrder(newOrder);
     
-    // Also save to API for cross-device sync
-    ApiService.saveOrder(newOrder);
-    
     console.log('💾 Resultado do salvamento:', success);
     
     if (success) {
