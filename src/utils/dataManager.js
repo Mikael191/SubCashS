@@ -1,4 +1,5 @@
 // Sistema centralizado de gerenciamento de pedidos
+import { FirebaseOrderSync } from './firebase';
 
 export const OrderManager = {
   // Salvar pedido
@@ -9,6 +10,9 @@ export const OrderManager = {
       localStorage.setItem('subcashs_orders', JSON.stringify(newOrders));
       console.log('✅ Pedido salvo:', order.id);
       console.log('📦 Total de pedidos:', newOrders.length);
+      
+      // Também salvar no Firebase para sincronização entre dispositivos
+      FirebaseOrderSync.saveOrder(order);
       
       // Disparar evento para TODAS as janelas/abas
       this.notifyChange();

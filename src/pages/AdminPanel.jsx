@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FaUserShield, FaSignOutAlt, FaBox, FaDollarSign, FaChartLine, FaTruck, FaCheckCircle, FaPhone, FaClock, FaMapMarkerAlt, FaCreditCard, FaCheck, FaTrash, FaTimes, FaBroom } from 'react-icons/fa';
-import { OrderManager } from '../utils/dataManager';
+import { OrderManager, FirebaseOrderSync } from '../utils/dataManager';
 
 function AdminPanel() {
   const [orders, setOrders] = useState([]);
@@ -12,19 +12,27 @@ function AdminPanel() {
 
   useEffect(() => {
     if (isAuthenticated) {
+      // Load initial orders from localStorage
       loadOrders();
       
-      // Auto-refresh a cada 1 segundo
+      // Listen for real-time updates from Firebase
+      const unsubscribe = FirebaseOrderSync.listenForOrders((firebaseOrders) => {
+        console.log('🔄 Pedidos atualizados via Firebase:', firebaseOrders.length);
+        setOrders(firebaseOrders);
+      });
+      
+      // Auto-refresh as fallback
       const interval = setInterval(() => {
         loadOrders();
-      }, 1000);
+      }, 5000); // Every 5 seconds as fallback
       
-      // Listen for changes
+      // Listen for localStorage changes (for same device)
       const handleChange = () => loadOrders();
       window.addEventListener('ordersChanged', handleChange);
       window.addEventListener('storage', handleChange);
       
       return () => {
+        if (unsubscribe) unsubscribe();
         clearInterval(interval);
         window.removeEventListener('ordersChanged', handleChange);
         window.removeEventListener('storage', handleChange);
@@ -52,19 +60,26 @@ function AdminPanel() {
   };
 
   const updateStatus = (orderId, newStatus) => {
+    // Update in Firebase
+    FirebaseOrderSync.updateOrderStatus(orderId, newStatus);
+    // Update local storage as fallback
     OrderManager.updateOrderStatus(orderId, newStatus);
     loadOrders();
   };
 
   const rejectOrder = (orderId) => {
     if (confirm('❌ Tem certeza que deseja recusar este pedido?')) {
-      OrderManager.rejectOrder(orderId);
+      // Reject in Firebase
+      FirebaseOrderSync.rejectOrder(orderId, 'Pedido recusado pela loja');
+      // Reject in local storage as fallback
+      OrderManager.rejectOrder(orderId, 'Pedido recusado pela loja');
       loadOrders();
     }
   };
 
   const clearOrders = () => {
     if (confirm('🧹 Limpar pedidos concluídos e recusados?\n\nA receita será salva no histórico!')) {
+      // Clear in Firebase (would need implementation)
       const result = OrderManager.clearCompletedOrders();
       if (result.success) {
         alert(`✅ ${result.clearedCount} pedidos limpos!\n💰 R$ ${result.savedRevenue.toFixed(2)} salvo no histórico.`);

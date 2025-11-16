@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { FaShoppingCart, FaBars, FaTimes, FaPen, FaBook, FaCoffee, FaSnowflake, FaUtensils, FaPaperclip, FaMapMarkerAlt, FaPhone, FaEnvelope, FaClock, FaStar, FaArrowRight, FaTag, FaTrash, FaPlus, FaMinus, FaTruck, FaCreditCard, FaCheckCircle, FaUserShield, FaSignOutAlt, FaBox, FaDollarSign, FaChartLine, FaEye, FaCheck, FaUser, FaEdit } from 'react-icons/fa';
-import { OrderManager, UserManager } from './utils/dataManager';
+import { OrderManager, UserManager, FirebaseOrderSync } from './utils/dataManager';
 import { useNavigate } from 'react-router-dom';
 
 function App() {
@@ -199,6 +199,9 @@ function App() {
     
     // Save using OrderManager for reliability
     const success = OrderManager.saveOrder(newOrder);
+    
+    // Also save to Firebase for cross-device sync
+    FirebaseOrderSync.saveOrder(newOrder);
     
     console.log('💾 Resultado do salvamento:', success);
     
