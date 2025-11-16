@@ -403,6 +403,29 @@ function App() {
               exit={{ opacity: 0, height: 0 }}
               className="md:hidden mt-4 pb-4 space-y-3 border-t border-yellow-500/20 pt-4"
             >
+              {/* Botão de Login/Usuário no Mobile */}
+              {currentUser ? (
+                <button
+                  onClick={() => {
+                    navigate('/customer');
+                    setMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-3 rounded-lg shadow-lg shadow-blue-500/50 font-bold"
+                >
+                  <FaUser /> {currentUser.name.split(' ')[0]}
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    navigate('/login');
+                    setMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-3 rounded-lg shadow-lg shadow-green-500/50 font-bold"
+                >
+                  <FaUser /> Entrar
+                </button>
+              )}
+              
               <a href="#home" className="block text-white hover:text-yellow-400 transition-colors">Início</a>
               <a href="#products" className="block text-white hover:text-yellow-400 transition-colors">Produtos</a>
               <a href="#about" className="block text-white hover:text-yellow-400 transition-colors">Sobre</a>
@@ -1266,101 +1289,101 @@ function App() {
 
                         {/* Mostrar dados salvos quando não estiver editando */}
                         {currentUser && !editingAddress && deliveryInfo.address ? (
-                          <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-xl p-6 space-y-3">
-                            <div className="flex items-start gap-3">
-                              <FaUser className="text-yellow-400 mt-1" />
-                              <div className="flex-1">
-                                <p className="text-gray-400 text-sm">Nome Completo</p>
-                                <p className="text-white font-bold">{deliveryInfo.name}</p>
+                          <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-xl p-4 md:p-6 space-y-3 text-sm md:text-base">
+                            <div className="flex items-start gap-2 md:gap-3">
+                              <FaUser className="text-yellow-400 mt-1 text-sm md:text-base" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-gray-400 text-xs md:text-sm">Nome Completo</p>
+                                <p className="text-white font-bold truncate">{deliveryInfo.name}</p>
                               </div>
                             </div>
-                            <div className="flex items-start gap-3">
-                              <FaPhone className="text-yellow-400 mt-1" />
-                              <div className="flex-1">
-                                <p className="text-gray-400 text-sm">Telefone</p>
+                            <div className="flex items-start gap-2 md:gap-3">
+                              <FaPhone className="text-yellow-400 mt-1 text-sm md:text-base" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-gray-400 text-xs md:text-sm">Telefone</p>
                                 <p className="text-white font-bold">{deliveryInfo.phone}</p>
                               </div>
                             </div>
-                            <div className="flex items-start gap-3">
-                              <FaMapMarkerAlt className="text-yellow-400 mt-1" />
-                              <div className="flex-1">
-                                <p className="text-gray-400 text-sm">Endereço</p>
-                                <p className="text-white font-bold">
+                            <div className="flex items-start gap-2 md:gap-3">
+                              <FaMapMarkerAlt className="text-yellow-400 mt-1 text-sm md:text-base" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-gray-400 text-xs md:text-sm">Endereço</p>
+                                <p className="text-white font-bold break-words">
                                   {deliveryInfo.address}, {deliveryInfo.number}
                                   {deliveryInfo.complement && ` - ${deliveryInfo.complement}`}
                                 </p>
-                                <p className="text-white">
+                                <p className="text-white break-words">
                                   {deliveryInfo.neighborhood} - {deliveryInfo.city}, {deliveryInfo.state}
                                 </p>
-                                <p className="text-gray-400 text-sm">CEP: {deliveryInfo.cep}</p>
+                                <p className="text-gray-400 text-xs md:text-sm">CEP: {deliveryInfo.cep}</p>
                               </div>
                             </div>
                             <div className="pt-3 border-t border-yellow-400/30">
-                              <p className="text-yellow-400 text-sm flex items-center gap-2">
+                              <p className="text-yellow-400 text-xs md:text-sm flex items-center gap-2">
                                 <FaCheckCircle /> Dados confirmados do seu cadastro
                               </p>
                             </div>
                           </div>
                         ) : (
-                          <div className="grid md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                             <input
                               type="text"
                               placeholder="Nome Completo *"
                               value={deliveryInfo.name}
                               onChange={(e) => setDeliveryInfo({...deliveryInfo, name: e.target.value})}
-                              className="col-span-2 px-4 py-3 bg-black border-2 border-gray-700 rounded-xl text-white focus:outline-none focus:border-yellow-500 transition-colors"
+                              className="md:col-span-2 px-3 md:px-4 py-2 md:py-3 bg-black border-2 border-gray-700 rounded-xl text-white text-sm md:text-base focus:outline-none focus:border-yellow-500 transition-colors"
                             />
                             <input
                               type="tel"
                               placeholder="Telefone *"
                               value={deliveryInfo.phone}
                               onChange={(e) => setDeliveryInfo({...deliveryInfo, phone: e.target.value})}
-                              className="px-4 py-3 bg-black border-2 border-gray-700 rounded-xl text-white focus:outline-none focus:border-yellow-500 transition-colors"
+                              className="px-3 md:px-4 py-2 md:py-3 bg-black border-2 border-gray-700 rounded-xl text-white text-sm md:text-base focus:outline-none focus:border-yellow-500 transition-colors"
                             />
                             <input
                               type="text"
                               placeholder="CEP *"
                               value={deliveryInfo.cep}
                               onChange={(e) => setDeliveryInfo({...deliveryInfo, cep: e.target.value})}
-                              className="px-4 py-3 bg-black border-2 border-gray-700 rounded-xl text-white focus:outline-none focus:border-yellow-500 transition-colors"
+                              className="px-3 md:px-4 py-2 md:py-3 bg-black border-2 border-gray-700 rounded-xl text-white text-sm md:text-base focus:outline-none focus:border-yellow-500 transition-colors"
                             />
                             <input
                               type="text"
                               placeholder="Endereço *"
                               value={deliveryInfo.address}
                               onChange={(e) => setDeliveryInfo({...deliveryInfo, address: e.target.value})}
-                              className="col-span-2 px-4 py-3 bg-black border-2 border-gray-700 rounded-xl text-white focus:outline-none focus:border-yellow-500 transition-colors"
+                              className="md:col-span-2 px-3 md:px-4 py-2 md:py-3 bg-black border-2 border-gray-700 rounded-xl text-white text-sm md:text-base focus:outline-none focus:border-yellow-500 transition-colors"
                             />
                             <input
                               type="text"
                               placeholder="Número *"
                               value={deliveryInfo.number}
                               onChange={(e) => setDeliveryInfo({...deliveryInfo, number: e.target.value})}
-                              className="px-4 py-3 bg-black border-2 border-gray-700 rounded-xl text-white focus:outline-none focus:border-yellow-500 transition-colors"
+                              className="px-3 md:px-4 py-2 md:py-3 bg-black border-2 border-gray-700 rounded-xl text-white text-sm md:text-base focus:outline-none focus:border-yellow-500 transition-colors"
                             />
                             <input
                               type="text"
                               placeholder="Complemento"
                               value={deliveryInfo.complement}
                               onChange={(e) => setDeliveryInfo({...deliveryInfo, complement: e.target.value})}
-                              className="px-4 py-3 bg-black border-2 border-gray-700 rounded-xl text-white focus:outline-none focus:border-yellow-500 transition-colors"
+                              className="px-3 md:px-4 py-2 md:py-3 bg-black border-2 border-gray-700 rounded-xl text-white text-sm md:text-base focus:outline-none focus:border-yellow-500 transition-colors"
                             />
                             <input
                               type="text"
                               placeholder="Bairro *"
                               value={deliveryInfo.neighborhood}
                               onChange={(e) => setDeliveryInfo({...deliveryInfo, neighborhood: e.target.value})}
-                              className="px-4 py-3 bg-black border-2 border-gray-700 rounded-xl text-white focus:outline-none focus:border-yellow-500 transition-colors"
+                              className="px-3 md:px-4 py-2 md:py-3 bg-black border-2 border-gray-700 rounded-xl text-white text-sm md:text-base focus:outline-none focus:border-yellow-500 transition-colors"
                             />
                             <input
                               type="text"
                               placeholder="Cidade *"
                               value={deliveryInfo.city}
                               onChange={(e) => setDeliveryInfo({...deliveryInfo, city: e.target.value})}
-                              className="px-4 py-3 bg-black border-2 border-gray-700 rounded-xl text-white focus:outline-none focus:border-yellow-500 transition-colors"
+                              className="px-3 md:px-4 py-2 md:py-3 bg-black border-2 border-gray-700 rounded-xl text-white text-sm md:text-base focus:outline-none focus:border-yellow-500 transition-colors"
                             />
                             {editingAddress && (
-                              <div className="col-span-2 flex gap-3">
+                              <div className="md:col-span-2 flex flex-col sm:flex-row gap-3">
                                 <button
                                   onClick={() => {
                                     // Restaurar dados originais
@@ -1379,13 +1402,13 @@ function App() {
                                     }
                                     setEditingAddress(false);
                                   }}
-                                  className="flex-1 border-2 border-gray-700 text-white py-2 rounded-lg hover:border-gray-600 transition-colors"
+                                  className="flex-1 border-2 border-gray-700 text-white py-2 md:py-3 rounded-lg text-sm md:text-base hover:border-gray-600 transition-colors"
                                 >
                                   Cancelar
                                 </button>
                                 <button
                                   onClick={() => setEditingAddress(false)}
-                                  className="flex-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black py-2 rounded-lg font-bold hover:from-yellow-500 hover:to-yellow-600"
+                                  className="flex-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black py-2 md:py-3 rounded-lg font-bold text-sm md:text-base hover:from-yellow-500 hover:to-yellow-600"
                                 >
                                   Confirmar Alteração
                                 </button>
