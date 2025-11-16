@@ -1,14 +1,14 @@
 // Sistema centralizado de gerenciamento de pedidos
-import { CrossDeviceSync } from './crossDeviceSync';
+import { SimpleSync } from './simpleSync';
 
 export const OrderManager = {
   // Salvar pedido
-  async saveOrder(order) {
+  saveOrder(order) {
     try {
-      // Save to cross-device sync service
-      const success = await CrossDeviceSync.saveOrder(order);
+      // Save to simple sync service
+      const success = SimpleSync.saveOrder(order);
       
-      console.log('✅ Pedido salvo e sincronizado:', order.id);
+      console.log('✅ Pedido salvo:', order.id);
       
       // Disparar evento para TODAS as janelas/abas
       this.notifyChange();
@@ -21,30 +21,24 @@ export const OrderManager = {
   },
 
   // Buscar todos os pedidos
-  async getOrders() {
+  getOrders() {
     try {
-      // Get from cross-device sync service
-      const orders = await CrossDeviceSync.getOrders();
+      // Get from simple sync service
+      const orders = SimpleSync.getOrders();
       return orders;
     } catch (error) {
       console.error('❌ Erro ao carregar pedidos:', error);
-      // Fallback to local storage
-      try {
-        const saved = localStorage.getItem('subcashs_orders_backup');
-        return saved ? JSON.parse(saved) : [];
-      } catch (localError) {
-        return [];
-      }
+      return [];
     }
   },
 
   // Atualizar status do pedido
-  async updateOrderStatus(orderId, newStatus) {
+  updateOrderStatus(orderId, newStatus) {
     try {
-      // Update via cross-device sync service
-      const success = await CrossDeviceSync.updateOrderStatus(orderId, newStatus);
+      // Update via simple sync service
+      const success = SimpleSync.updateOrderStatus(orderId, newStatus);
       
-      console.log('✅ Status atualizado e sincronizado:', orderId, '->', newStatus);
+      console.log('✅ Status atualizado:', orderId, '->', newStatus);
       
       // Notificar mudanças
       this.notifyChange();
@@ -69,12 +63,12 @@ export const OrderManager = {
   },
 
   // Recusar pedido
-  async rejectOrder(orderId, reason = 'Pedido recusado pela loja') {
+  rejectOrder(orderId, reason = 'Pedido recusado pela loja') {
     try {
-      // Reject via cross-device sync service
-      const success = await CrossDeviceSync.rejectOrder(orderId, reason);
+      // Reject via simple sync service
+      const success = SimpleSync.rejectOrder(orderId, reason);
       
-      console.log('❌ Pedido recusado e sincronizado:', orderId);
+      console.log('❌ Pedido recusado:', orderId);
       
       this.notifyChange();
       
@@ -86,39 +80,16 @@ export const OrderManager = {
   },
 
   // Limpar pedidos concluídos e recusados (mantém receita)
-  async clearCompletedOrders() {
+  clearCompletedOrders() {
     try {
-      const orders = await this.getOrders();
+      const result = SimpleSync.clearCompletedOrders();
       
-      // Calcular receita dos pedidos concluídos antes de limpar
-      const completedRevenue = orders
-        .filter(order => order.status === 'completed')
-        .reduce((sum, order) => sum + order.total, 0);
-      
-      // Adicionar à receita histórica
-      await CrossDeviceSync.addToHistoricalRevenue(completedRevenue);
-      
-      // Manter apenas pedidos ativos (pending, preparing, delivering)
-      const activeOrders = orders.filter(order => 
-        order.status === 'pending' || 
-        order.status === 'preparing' || 
-        order.status === 'delivering'
-      );
-      
-      // Save active orders to cross-device sync
-      for (const order of activeOrders) {
-        await CrossDeviceSync.saveOrder(order);
+      if (result.success) {
+        console.log('🧹 Pedidos limpos. Receita salva:', result.savedRevenue);
+        this.notifyChange();
       }
       
-      console.log('🧹 Pedidos limpos. Receita salva:', completedRevenue);
-      
-      this.notifyChange();
-      
-      return {
-        success: true,
-        clearedCount: orders.length - activeOrders.length,
-        savedRevenue: completedRevenue
-      };
+      return result;
     } catch (error) {
       console.error('❌ Erro ao limpar pedidos:', error);
       return { success: false };
@@ -126,9 +97,9 @@ export const OrderManager = {
   },
 
   // Adicionar à receita histórica
-  async addToHistoricalRevenue(amount) {
+  addToHistoricalRevenue(amount) {
     try {
-      const newTotal = await CrossDeviceSync.addToHistoricalRevenue(amount);
+      const newTotal = SimpleSync.addToHistoricalRevenue(amount);
       return newTotal;
     } catch (error) {
       console.error('❌ Erro ao salvar receita:', error);
@@ -137,28 +108,22 @@ export const OrderManager = {
   },
 
   // Buscar receita histórica
-  async getHistoricalRevenue() {
+  getHistoricalRevenue() {
     try {
-      const revenue = await CrossDeviceSync.getHistoricalRevenue();
+      const revenue = SimpleSync.getHistoricalRevenue();
       return revenue;
     } catch (error) {
-      // Fallback to localStorage
-      try {
-        const saved = localStorage.getItem('subcashs_historical_revenue');
-        return saved ? JSON.parse(saved) : 0;
-      } catch (localError) {
-        return 0;
-      }
+      return 0;
     }
   },
 
   // Calcular receita total (pedidos atuais + histórico)
-  async getTotalRevenue() {
-    const currentOrders = await this.getOrders();
+  getTotalRevenue() {
+    const currentOrders = this.getOrders();
     const currentRevenue = currentOrders
       .filter(order => order.status === 'completed')
       .reduce((sum, order) => sum + order.total, 0);
-    const historicalRevenue = await this.getHistoricalRevenue();
+    const historicalRevenue = this.getHistoricalRevenue();
     return currentRevenue + historicalRevenue;
   },
 

@@ -214,7 +214,8 @@ function App() {
       // Show success
       setCheckoutStep('success');
       
-      // NÃO limpar automaticamente - deixar usuário escolher ação
+      // Clear cart after successful order
+      setCart([]);
     } else {
       alert('❌ Erro ao salvar pedido. Tente novamente.');
     }
