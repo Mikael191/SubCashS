@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { FaShoppingCart, FaBars, FaTimes, FaPen, FaBook, FaCoffee, FaSnowflake, FaUtensils, FaPaperclip, FaMapMarkerAlt, FaPhone, FaEnvelope, FaClock, FaStar, FaArrowRight, FaTag, FaTrash, FaPlus, FaMinus, FaTruck, FaCreditCard, FaCheckCircle, FaUserShield, FaSignOutAlt, FaBox, FaDollarSign, FaChartLine, FaEye, FaCheck, FaUser, FaEdit } from 'react-icons/fa';
 import { OrderManager, UserManager } from './utils/dataManager';
+import { DirectSync } from './utils/directSync';
 import { useNavigate } from 'react-router-dom';
 
 function App() {
@@ -197,8 +198,8 @@ function App() {
     
     console.log('📋 Pedido criado:', newOrder);
     
-    // Save using OrderManager for reliability
-    const success = OrderManager.saveOrder(newOrder);
+    // Save using DirectSync for reliability
+    const success = DirectSync.saveOrder(newOrder);
     
     console.log('💾 Resultado do salvamento:', success);
     
@@ -207,7 +208,7 @@ function App() {
       setCurrentOrderId(newOrder.id);
       
       // Notify all listeners
-      OrderManager.notifyChange();
+      DirectSync.notifyChange();
       
       console.log('✅ Pedido salvo com sucesso! ID:', newOrder.id);
       

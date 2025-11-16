@@ -1,17 +1,17 @@
 // Sistema centralizado de gerenciamento de pedidos
-import { SharedSync } from './sharedSync';
+import { DirectSync } from './directSync';
 
 export const OrderManager = {
   // Salvar pedido
-  async saveOrder(order) {
+  saveOrder(order) {
     try {
-      // Save to shared sync service
-      const success = await SharedSync.saveOrder(order);
+      // Save to direct sync service
+      const success = DirectSync.saveOrder(order);
       
-      console.log('✅ Pedido salvo e sincronizado:', order.id);
+      console.log('✅ Pedido salvo diretamente:', order.id);
       
       // Disparar evento para TODAS as janelas/abas
-      this.notifyChange();
+      DirectSync.notifyChange();
       
       return success;
     } catch (error) {
@@ -21,10 +21,10 @@ export const OrderManager = {
   },
 
   // Buscar todos os pedidos
-  async getOrders() {
+  getOrders() {
     try {
-      // Get from shared sync service
-      const orders = await SharedSync.getOrders();
+      // Get from direct sync service
+      const orders = DirectSync.getOrders();
       return orders;
     } catch (error) {
       console.error('❌ Erro ao carregar pedidos:', error);
@@ -33,15 +33,15 @@ export const OrderManager = {
   },
 
   // Atualizar status do pedido
-  async updateOrderStatus(orderId, newStatus) {
+  updateOrderStatus(orderId, newStatus) {
     try {
-      // Update via shared sync service
-      const success = await SharedSync.updateOrderStatus(orderId, newStatus);
+      // Update via direct sync service
+      const success = DirectSync.updateOrderStatus(orderId, newStatus);
       
-      console.log('✅ Status atualizado e sincronizado:', orderId, '->', newStatus);
+      console.log('✅ Status atualizado diretamente:', orderId, '->', newStatus);
       
       // Notificar mudanças
-      this.notifyChange();
+      DirectSync.notifyChange();
       
       return success;
     } catch (error) {
@@ -63,14 +63,14 @@ export const OrderManager = {
   },
 
   // Recusar pedido
-  async rejectOrder(orderId, reason = 'Pedido recusado pela loja') {
+  rejectOrder(orderId, reason = 'Pedido recusado pela loja') {
     try {
-      // Reject via shared sync service
-      const success = await SharedSync.rejectOrder(orderId, reason);
+      // Reject via direct sync service
+      const success = DirectSync.rejectOrder(orderId, reason);
       
-      console.log('❌ Pedido recusado e sincronizado:', orderId);
+      console.log('❌ Pedido recusado diretamente:', orderId);
       
-      this.notifyChange();
+      DirectSync.notifyChange();
       
       return success;
     } catch (error) {
@@ -80,13 +80,13 @@ export const OrderManager = {
   },
 
   // Limpar pedidos concluídos e recusados (mantém receita)
-  async clearCompletedOrders() {
+  clearCompletedOrders() {
     try {
-      const result = await SharedSync.clearCompletedOrders();
+      const result = DirectSync.clearCompletedOrders();
       
       if (result.success) {
-        console.log('🧹 Pedidos limpos e sincronizados. Receita salva:', result.savedRevenue);
-        this.notifyChange();
+        console.log('🧹 Pedidos limpos diretamente. Receita salva:', result.savedRevenue);
+        DirectSync.notifyChange();
       }
       
       return result;
@@ -97,9 +97,9 @@ export const OrderManager = {
   },
 
   // Adicionar à receita histórica
-  async addToHistoricalRevenue(amount) {
+  addToHistoricalRevenue(amount) {
     try {
-      const newTotal = await SharedSync.addToHistoricalRevenue(amount);
+      const newTotal = DirectSync.addToHistoricalRevenue(amount);
       return newTotal;
     } catch (error) {
       console.error('❌ Erro ao salvar receita:', error);
@@ -108,9 +108,9 @@ export const OrderManager = {
   },
 
   // Buscar receita histórica
-  async getHistoricalRevenue() {
+  getHistoricalRevenue() {
     try {
-      const revenue = await SharedSync.getHistoricalRevenue();
+      const revenue = DirectSync.getHistoricalRevenue();
       return revenue;
     } catch (error) {
       return 0;
@@ -118,21 +118,18 @@ export const OrderManager = {
   },
 
   // Calcular receita total (pedidos atuais + histórico)
-  async getTotalRevenue() {
-    const currentOrders = await this.getOrders();
+  getTotalRevenue() {
+    const currentOrders = this.getOrders();
     const currentRevenue = currentOrders
       .filter(order => order.status === 'completed')
       .reduce((sum, order) => sum + order.total, 0);
-    const historicalRevenue = await this.getHistoricalRevenue();
+    const historicalRevenue = this.getHistoricalRevenue();
     return currentRevenue + historicalRevenue;
   },
 
   // Criar evento customizado para notificar mudanças
   notifyChange() {
-    const event = new CustomEvent('ordersChanged', {
-      detail: { timestamp: Date.now() }
-    });
-    window.dispatchEvent(event);
+    DirectSync.notifyChange();
   }
 };
 

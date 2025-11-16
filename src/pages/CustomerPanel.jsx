@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUser, FaSignOutAlt, FaShoppingBag, FaTruck, FaCheckCircle, FaClock, FaPhone, FaMapMarkerAlt, FaEdit, FaShoppingCart, FaBox } from 'react-icons/fa';
 import { UserManager, OrderManager } from '../utils/dataManager';
+import { DirectSync } from '../utils/directSync';
 import { useNavigate } from 'react-router-dom';
 
 function CustomerPanel() {
@@ -22,28 +23,30 @@ function CustomerPanel() {
     setUser(currentUser);
     loadOrders(currentUser.id);
 
-    // Auto-refresh a cada 2 segundos
+    // Auto-refresh a cada 500ms for better responsiveness
     const interval = setInterval(() => {
       loadOrders(currentUser.id);
       setForceUpdate(prev => prev + 1);
-    }, 2000);
+    }, 500);
 
-    // Listen for order changes
+    // Listen for direct order changes
     const handleChange = () => {
       loadOrders(currentUser.id);
     };
-    window.addEventListener('ordersChanged', handleChange);
+    window.addEventListener('directOrdersUpdate', handleChange);
     window.addEventListener('storage', handleChange);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('ordersChanged', handleChange);
+      window.removeEventListener('directOrdersUpdate', handleChange);
       window.removeEventListener('storage', handleChange);
     };
   }, [navigate]);
 
   const loadOrders = (userId) => {
-    const userOrders = OrderManager.getOrdersByUser(userId);
+    // Use DirectSync for more reliable order loading
+    const allOrders = DirectSync.getOrders();
+    const userOrders = allOrders.filter(order => order.userId === userId);
     setOrders(userOrders.sort((a, b) => b.id - a.id));
   };
 
