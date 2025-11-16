@@ -1,14 +1,14 @@
 // Sistema centralizado de gerenciamento de pedidos
-import { SimpleSync } from './simpleSync';
+import { SharedSync } from './sharedSync';
 
 export const OrderManager = {
   // Salvar pedido
-  saveOrder(order) {
+  async saveOrder(order) {
     try {
-      // Save to simple sync service
-      const success = SimpleSync.saveOrder(order);
+      // Save to shared sync service
+      const success = await SharedSync.saveOrder(order);
       
-      console.log('✅ Pedido salvo:', order.id);
+      console.log('✅ Pedido salvo e sincronizado:', order.id);
       
       // Disparar evento para TODAS as janelas/abas
       this.notifyChange();
@@ -21,10 +21,10 @@ export const OrderManager = {
   },
 
   // Buscar todos os pedidos
-  getOrders() {
+  async getOrders() {
     try {
-      // Get from simple sync service
-      const orders = SimpleSync.getOrders();
+      // Get from shared sync service
+      const orders = await SharedSync.getOrders();
       return orders;
     } catch (error) {
       console.error('❌ Erro ao carregar pedidos:', error);
@@ -33,12 +33,12 @@ export const OrderManager = {
   },
 
   // Atualizar status do pedido
-  updateOrderStatus(orderId, newStatus) {
+  async updateOrderStatus(orderId, newStatus) {
     try {
-      // Update via simple sync service
-      const success = SimpleSync.updateOrderStatus(orderId, newStatus);
+      // Update via shared sync service
+      const success = await SharedSync.updateOrderStatus(orderId, newStatus);
       
-      console.log('✅ Status atualizado:', orderId, '->', newStatus);
+      console.log('✅ Status atualizado e sincronizado:', orderId, '->', newStatus);
       
       // Notificar mudanças
       this.notifyChange();
@@ -63,12 +63,12 @@ export const OrderManager = {
   },
 
   // Recusar pedido
-  rejectOrder(orderId, reason = 'Pedido recusado pela loja') {
+  async rejectOrder(orderId, reason = 'Pedido recusado pela loja') {
     try {
-      // Reject via simple sync service
-      const success = SimpleSync.rejectOrder(orderId, reason);
+      // Reject via shared sync service
+      const success = await SharedSync.rejectOrder(orderId, reason);
       
-      console.log('❌ Pedido recusado:', orderId);
+      console.log('❌ Pedido recusado e sincronizado:', orderId);
       
       this.notifyChange();
       
@@ -80,12 +80,12 @@ export const OrderManager = {
   },
 
   // Limpar pedidos concluídos e recusados (mantém receita)
-  clearCompletedOrders() {
+  async clearCompletedOrders() {
     try {
-      const result = SimpleSync.clearCompletedOrders();
+      const result = await SharedSync.clearCompletedOrders();
       
       if (result.success) {
-        console.log('🧹 Pedidos limpos. Receita salva:', result.savedRevenue);
+        console.log('🧹 Pedidos limpos e sincronizados. Receita salva:', result.savedRevenue);
         this.notifyChange();
       }
       
@@ -97,9 +97,9 @@ export const OrderManager = {
   },
 
   // Adicionar à receita histórica
-  addToHistoricalRevenue(amount) {
+  async addToHistoricalRevenue(amount) {
     try {
-      const newTotal = SimpleSync.addToHistoricalRevenue(amount);
+      const newTotal = await SharedSync.addToHistoricalRevenue(amount);
       return newTotal;
     } catch (error) {
       console.error('❌ Erro ao salvar receita:', error);
@@ -108,9 +108,9 @@ export const OrderManager = {
   },
 
   // Buscar receita histórica
-  getHistoricalRevenue() {
+  async getHistoricalRevenue() {
     try {
-      const revenue = SimpleSync.getHistoricalRevenue();
+      const revenue = await SharedSync.getHistoricalRevenue();
       return revenue;
     } catch (error) {
       return 0;
@@ -118,12 +118,12 @@ export const OrderManager = {
   },
 
   // Calcular receita total (pedidos atuais + histórico)
-  getTotalRevenue() {
-    const currentOrders = this.getOrders();
+  async getTotalRevenue() {
+    const currentOrders = await this.getOrders();
     const currentRevenue = currentOrders
       .filter(order => order.status === 'completed')
       .reduce((sum, order) => sum + order.total, 0);
-    const historicalRevenue = this.getHistoricalRevenue();
+    const historicalRevenue = await this.getHistoricalRevenue();
     return currentRevenue + historicalRevenue;
   },
 

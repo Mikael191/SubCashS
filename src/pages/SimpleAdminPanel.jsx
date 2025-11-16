@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FaUserShield, FaSignOutAlt, FaBox, FaDollarSign, FaChartLine, FaTruck, FaCheckCircle, FaPhone, FaClock, FaMapMarkerAlt, FaCreditCard, FaCheck, FaTimes, FaBroom } from 'react-icons/fa';
+import { SharedSync } from '../utils/sharedSync';
 
 // Simple order manager that works reliably
 const SimpleOrderManager = {
   // Get orders from localStorage
-  getOrders() {
+  async getOrders() {
     try {
-      const saved = localStorage.getItem('subcashs_orders');
-      return saved ? JSON.parse(saved) : [];
+      const orders = await SharedSync.getOrders();
+      return orders;
     } catch (error) {
       console.error('Error loading orders:', error);
       return [];
@@ -16,15 +17,13 @@ const SimpleOrderManager = {
   },
 
   // Save order to localStorage
-  saveOrder(order) {
+  async saveOrder(order) {
     try {
-      const orders = this.getOrders();
-      const newOrders = [order, ...orders];
-      localStorage.setItem('subcashs_orders', JSON.stringify(newOrders));
+      const success = await SharedSync.saveOrder(order);
       
       // Trigger update event
       window.dispatchEvent(new Event('ordersUpdated'));
-      return true;
+      return success;
     } catch (error) {
       console.error('Error saving order:', error);
       return false;
@@ -32,17 +31,13 @@ const SimpleOrderManager = {
   },
 
   // Update order status
-  updateOrderStatus(orderId, newStatus) {
+  async updateOrderStatus(orderId, newStatus) {
     try {
-      const orders = this.getOrders();
-      const updated = orders.map(order => 
-        order.id === orderId ? { ...order, status: newStatus, updatedAt: new Date().toISOString() } : order
-      );
-      localStorage.setItem('subcashs_orders', JSON.stringify(updated));
+      const success = await SharedSync.updateOrderStatus(orderId, newStatus);
       
       // Trigger update event
       window.dispatchEvent(new Event('ordersUpdated'));
-      return true;
+      return success;
     } catch (error) {
       console.error('Error updating order status:', error);
       return false;
@@ -50,17 +45,13 @@ const SimpleOrderManager = {
   },
 
   // Reject order
-  rejectOrder(orderId, reason = 'Pedido recusado pela loja') {
+  async rejectOrder(orderId, reason = 'Pedido recusado pela loja') {
     try {
-      const orders = this.getOrders();
-      const updated = orders.map(order => 
-        order.id === orderId ? { ...order, status: 'rejected', rejectedAt: new Date().toISOString(), rejectionReason: reason } : order
-      );
-      localStorage.setItem('subcashs_orders', JSON.stringify(updated));
+      const success = await SharedSync.rejectOrder(orderId, reason);
       
       // Trigger update event
       window.dispatchEvent(new Event('ordersUpdated'));
-      return true;
+      return success;
     } catch (error) {
       console.error('Error rejecting order:', error);
       return false;
@@ -68,37 +59,16 @@ const SimpleOrderManager = {
   },
 
   // Clear completed orders
-  clearCompletedOrders() {
+  async clearCompletedOrders() {
     try {
-      const orders = this.getOrders();
+      const result = await SharedSync.clearCompletedOrders();
       
-      // Calculate revenue from completed orders
-      const completedRevenue = orders
-        .filter(order => order.status === 'completed')
-        .reduce((sum, order) => sum + order.total, 0);
+      if (result.success) {
+        // Trigger update event
+        window.dispatchEvent(new Event('ordersUpdated'));
+      }
       
-      // Add to historical revenue
-      const currentHistorical = this.getHistoricalRevenue();
-      const newHistorical = currentHistorical + completedRevenue;
-      localStorage.setItem('subcashs_historical_revenue', JSON.stringify(newHistorical));
-      
-      // Keep only active orders
-      const activeOrders = orders.filter(order => 
-        order.status === 'pending' || 
-        order.status === 'preparing' || 
-        order.status === 'delivering'
-      );
-      
-      localStorage.setItem('subcashs_orders', JSON.stringify(activeOrders));
-      
-      // Trigger update event
-      window.dispatchEvent(new Event('ordersUpdated'));
-      
-      return {
-        success: true,
-        clearedCount: orders.length - activeOrders.length,
-        savedRevenue: completedRevenue
-      };
+      return result;
     } catch (error) {
       console.error('Error clearing orders:', error);
       return { success: false };
@@ -106,23 +76,27 @@ const SimpleOrderManager = {
   },
 
   // Get historical revenue
-  getHistoricalRevenue() {
+  async getHistoricalRevenue() {
     try {
-      const saved = localStorage.getItem('subcashs_historical_revenue');
-      return saved ? JSON.parse(saved) : 0;
+      const revenue = await SharedSync.getHistoricalRevenue();
+      return revenue;
     } catch (error) {
       return 0;
     }
   },
 
   // Get total revenue
-  getTotalRevenue() {
-    const orders = this.getOrders();
-    const currentRevenue = orders
-      .filter(order => order.status === 'completed')
-      .reduce((sum, order) => sum + order.total, 0);
-    const historicalRevenue = this.getHistoricalRevenue();
-    return currentRevenue + historicalRevenue;
+  async getTotalRevenue() {
+    try {
+      const orders = await this.getOrders();
+      const currentRevenue = orders
+        .filter(order => order.status === 'completed')
+        .reduce((sum, order) => sum + order.total, 0);
+      const historicalRevenue = await this.getHistoricalRevenue();
+      return currentRevenue + historicalRevenue;
+    } catch (error) {
+      return 0;
+    }
   }
 };
 
@@ -154,11 +128,11 @@ function SimpleAdminPanel() {
     }
   }, [isAuthenticated]);
 
-  const loadData = () => {
-    const freshOrders = SimpleOrderManager.getOrders();
+  const loadData = async () => {
+    const freshOrders = await SimpleOrderManager.getOrders();
     setOrders(freshOrders);
     
-    const revenue = SimpleOrderManager.getTotalRevenue();
+    const revenue = await SimpleOrderManager.getTotalRevenue();
     setTotalRevenue(revenue);
   };
 
@@ -176,21 +150,21 @@ function SimpleAdminPanel() {
     setIsAuthenticated(false);
   };
 
-  const updateStatus = (orderId, newStatus) => {
-    SimpleOrderManager.updateOrderStatus(orderId, newStatus);
+  const updateStatus = async (orderId, newStatus) => {
+    await SimpleOrderManager.updateOrderStatus(orderId, newStatus);
     loadData();
   };
 
-  const rejectOrder = (orderId) => {
+  const rejectOrder = async (orderId) => {
     if (confirm('❌ Tem certeza que deseja recusar este pedido?')) {
-      SimpleOrderManager.rejectOrder(orderId, 'Pedido recusado pela loja');
+      await SimpleOrderManager.rejectOrder(orderId, 'Pedido recusado pela loja');
       loadData();
     }
   };
 
-  const clearOrders = () => {
+  const clearOrders = async () => {
     if (confirm('🧹 Limpar pedidos concluídos e recusados?\n\nA receita será salva no histórico!')) {
-      const result = SimpleOrderManager.clearCompletedOrders();
+      const result = await SimpleOrderManager.clearCompletedOrders();
       if (result.success) {
         alert(`✅ ${result.clearedCount} pedidos limpos!\n💰 R$ ${result.savedRevenue.toFixed(2)} salvo no histórico.`);
         loadData();
