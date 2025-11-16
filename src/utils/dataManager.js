@@ -1,5 +1,5 @@
 // Sistema centralizado de gerenciamento de pedidos
-import { FirebaseOrderSync } from './firebase';
+import { ApiService } from './api';
 
 export const OrderManager = {
   // Salvar pedido
@@ -11,8 +11,8 @@ export const OrderManager = {
       console.log('✅ Pedido salvo:', order.id);
       console.log('📦 Total de pedidos:', newOrders.length);
       
-      // Também salvar no Firebase para sincronização entre dispositivos
-      FirebaseOrderSync.saveOrder(order);
+      // Também salvar na API para sincronização
+      ApiService.saveOrder(order);
       
       // Disparar evento para TODAS as janelas/abas
       this.notifyChange();
