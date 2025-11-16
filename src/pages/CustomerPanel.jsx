@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUser, FaSignOutAlt, FaShoppingBag, FaTruck, FaCheckCircle, FaClock, FaPhone, FaMapMarkerAlt, FaEdit, FaShoppingCart, FaBox } from 'react-icons/fa';
 import { UserManager } from '../utils/dataManager';
-import { getOrders } from '../utils/simpleOrder';
+import { CrossDeviceOrder } from '../utils/crossDeviceOrder';
 import { useNavigate } from 'react-router-dom';
 
 function CustomerPanel() {
@@ -42,9 +42,9 @@ function CustomerPanel() {
   }, [navigate]);
 
   const loadOrders = (userId) => {
-    // Use simple order loading
+    // Use cross-device order loading
     try {
-      const allOrders = getOrders();
+      const allOrders = CrossDeviceOrder.getOrders();
       const userOrders = allOrders.filter(order => order.userId === userId);
       setOrders(userOrders.sort((a, b) => b.id - a.id));
     } catch (error) {

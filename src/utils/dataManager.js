@@ -1,57 +1,21 @@
 // Sistema centralizado de gerenciamento de pedidos
-// Simplified version using localStorage only
+// Cross-device version using enhanced localStorage
+import { CrossDeviceOrder } from './crossDeviceOrder';
 
 export const OrderManager = {
   // Salvar pedido
   saveOrder(order) {
-    try {
-      // Simple localStorage approach
-      const saved = localStorage.getItem('subcashs_orders');
-      const orders = saved ? JSON.parse(saved) : [];
-      
-      // Remove any existing order with same ID
-      const filtered = orders.filter(o => o.id !== order.id);
-      
-      // Add new order at the beginning
-      const newOrders = [order, ...filtered];
-      
-      // Save back to localStorage
-      localStorage.setItem('subcashs_orders', JSON.stringify(newOrders));
-      
-      console.log('✅ Pedido salvo:', order.id);
-      return true;
-    } catch (error) {
-      console.error('❌ Erro ao salvar pedido:', error);
-      return false;
-    }
+    return CrossDeviceOrder.saveOrder(order);
   },
 
   // Buscar todos os pedidos
   getOrders() {
-    try {
-      const saved = localStorage.getItem('subcashs_orders');
-      return saved ? JSON.parse(saved) : [];
-    } catch (error) {
-      console.error('❌ Erro ao carregar pedidos:', error);
-      return [];
-    }
+    return CrossDeviceOrder.getOrders();
   },
 
   // Atualizar status do pedido
   updateOrderStatus(orderId, newStatus) {
-    try {
-      const orders = this.getOrders();
-      const updated = orders.map(order => 
-        order.id === orderId ? { ...order, status: newStatus } : order
-      );
-      localStorage.setItem('subcashs_orders', JSON.stringify(updated));
-      
-      console.log('✅ Status atualizado:', orderId, '->', newStatus);
-      return true;
-    } catch (error) {
-      console.error('❌ Erro ao atualizar status:', error);
-      return false;
-    }
+    return CrossDeviceOrder.updateOrderStatus(orderId, newStatus);
   },
 
   // Buscar pedido por ID
@@ -68,89 +32,27 @@ export const OrderManager = {
 
   // Recusar pedido
   rejectOrder(orderId, reason = 'Pedido recusado pela loja') {
-    try {
-      const orders = this.getOrders();
-      const updated = orders.map(order => 
-        order.id === orderId ? { ...order, status: 'rejected' } : order
-      );
-      localStorage.setItem('subcashs_orders', JSON.stringify(updated));
-      
-      console.log('❌ Pedido recusado:', orderId);
-      return true;
-    } catch (error) {
-      console.error('❌ Erro ao recusar pedido:', error);
-      return false;
-    }
+    return CrossDeviceOrder.rejectOrder(orderId, reason);
   },
 
   // Limpar pedidos concluídos e recusados (mantém receita)
   clearCompletedOrders() {
-    try {
-      const orders = this.getOrders();
-      
-      // Calculate revenue from completed orders
-      const completedRevenue = orders
-        .filter(order => order.status === 'completed')
-        .reduce((sum, order) => sum + order.total, 0);
-      
-      // Add to historical revenue
-      const currentHistorical = this.getHistoricalRevenue();
-      const newHistorical = currentHistorical + completedRevenue;
-      localStorage.setItem('subcashs_historical_revenue', JSON.stringify(newHistorical));
-      
-      // Keep only active orders
-      const activeOrders = orders.filter(order => 
-        order.status === 'pending' || 
-        order.status === 'preparing' || 
-        order.status === 'delivering'
-      );
-      
-      localStorage.setItem('subcashs_orders', JSON.stringify(activeOrders));
-      
-      console.log('🧹 Pedidos limpos. Receita salva:', completedRevenue);
-      
-      return {
-        success: true,
-        clearedCount: orders.length - activeOrders.length,
-        savedRevenue: completedRevenue
-      };
-    } catch (error) {
-      console.error('❌ Erro ao limpar pedidos:', error);
-      return { success: false };
-    }
+    return CrossDeviceOrder.clearCompletedOrders();
   },
 
   // Adicionar à receita histórica
   addToHistoricalRevenue(amount) {
-    try {
-      const current = this.getHistoricalRevenue();
-      const newTotal = current + amount;
-      localStorage.setItem('subcashs_historical_revenue', JSON.stringify(newTotal));
-      return newTotal;
-    } catch (error) {
-      console.error('❌ Erro ao salvar receita:', error);
-      return 0;
-    }
+    return CrossDeviceOrder.addToHistoricalRevenue(amount);
   },
 
   // Buscar receita histórica
   getHistoricalRevenue() {
-    try {
-      const saved = localStorage.getItem('subcashs_historical_revenue');
-      return saved ? JSON.parse(saved) : 0;
-    } catch (error) {
-      return 0;
-    }
+    return CrossDeviceOrder.getHistoricalRevenue();
   },
 
   // Calcular receita total (pedidos atuais + histórico)
   getTotalRevenue() {
-    const currentOrders = this.getOrders();
-    const currentRevenue = currentOrders
-      .filter(order => order.status === 'completed')
-      .reduce((sum, order) => sum + order.total, 0);
-    const historicalRevenue = this.getHistoricalRevenue();
-    return currentRevenue + historicalRevenue;
+    return CrossDeviceOrder.getTotalRevenue();
   },
 
   // Criar evento customizado para notificar mudanças
