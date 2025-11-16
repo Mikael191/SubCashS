@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FaUserShield, FaSignOutAlt, FaBox, FaDollarSign, FaChartLine, FaTruck, FaCheckCircle, FaPhone, FaClock, FaMapMarkerAlt, FaCreditCard, FaCheck, FaTrash, FaTimes, FaBroom } from 'react-icons/fa';
-import { OrderManager, ApiService } from '../utils/dataManager';
+import { OrderManager, RealtimeApi } from '../utils/dataManager';
 
 function AdminPanel() {
   const [orders, setOrders] = useState([]);
@@ -12,19 +12,28 @@ function AdminPanel() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      // Load initial orders from localStorage
+      // Load initial orders
       loadOrders();
       
-      // Poll for updates every 3 seconds (simple sync mechanism)
+      // Listen for real-time updates from central storage
+      const unsubscribe = RealtimeApi.listenForUpdates((updatedOrders) => {
+        console.log('🔄 Pedidos atualizados via armazenamento central:', updatedOrders.length);
+        // Only update if there are actually new orders
+        const currentOrders = OrderManager.getOrders();
+        if (JSON.stringify(currentOrders) !== JSON.stringify(updatedOrders)) {
+          setOrders(updatedOrders);
+        }
+      });
+      
+      // Poll every 2 seconds as backup
       const interval = setInterval(() => {
-        // Get fresh orders from API simulation
-        ApiService.getOrders().then(result => {
-          if (result.success) {
-            console.log('🔄 Pedidos atualizados via API:', result.data.length);
-            setOrders(result.data);
+        RealtimeApi.getOrders().then(freshOrders => {
+          const currentOrders = OrderManager.getOrders();
+          if (JSON.stringify(currentOrders) !== JSON.stringify(freshOrders)) {
+            setOrders(freshOrders);
           }
         });
-      }, 3000);
+      }, 2000);
       
       // Listen for localStorage changes (for same device)
       const handleChange = () => loadOrders();
@@ -32,6 +41,7 @@ function AdminPanel() {
       window.addEventListener('storage', handleChange);
       
       return () => {
+        if (unsubscribe) unsubscribe();
         clearInterval(interval);
         window.removeEventListener('ordersChanged', handleChange);
         window.removeEventListener('storage', handleChange);
@@ -59,8 +69,8 @@ function AdminPanel() {
   };
 
   const updateStatus = (orderId, newStatus) => {
-    // Update in API
-    ApiService.updateOrderStatus(orderId, newStatus);
+    // Update in central storage
+    RealtimeApi.updateOrderStatus(orderId, newStatus);
     // Update local storage as fallback
     OrderManager.updateOrderStatus(orderId, newStatus);
     loadOrders();
@@ -68,8 +78,8 @@ function AdminPanel() {
 
   const rejectOrder = (orderId) => {
     if (confirm('❌ Tem certeza que deseja recusar este pedido?')) {
-      // Reject in API
-      ApiService.rejectOrder(orderId, 'Pedido recusado pela loja');
+      // Reject in central storage
+      RealtimeApi.rejectOrder(orderId, 'Pedido recusado pela loja');
       // Reject in local storage as fallback
       OrderManager.rejectOrder(orderId, 'Pedido recusado pela loja');
       loadOrders();
@@ -78,7 +88,7 @@ function AdminPanel() {
 
   const clearOrders = () => {
     if (confirm('🧹 Limpar pedidos concluídos e recusados?\n\nA receita será salva no histórico!')) {
-      // Clear in API (would need implementation)
+      // Clear in central storage
       const result = OrderManager.clearCompletedOrders();
       if (result.success) {
         alert(`✅ ${result.clearedCount} pedidos limpos!\n💰 R$ ${result.savedRevenue.toFixed(2)} salvo no histórico.`);

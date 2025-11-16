@@ -1,5 +1,5 @@
 // Sistema centralizado de gerenciamento de pedidos
-import { ApiService } from './api';
+import { RealtimeApi } from './realtimeApi';
 
 export const OrderManager = {
   // Salvar pedido
@@ -8,11 +8,11 @@ export const OrderManager = {
       const orders = this.getOrders();
       const newOrders = [order, ...orders];
       localStorage.setItem('subcashs_orders', JSON.stringify(newOrders));
-      console.log('✅ Pedido salvo:', order.id);
-      console.log('📦 Total de pedidos:', newOrders.length);
+      console.log('✅ Pedido salvo localmente:', order.id);
+      console.log('📦 Total de pedidos locais:', newOrders.length);
       
-      // Também salvar na API para sincronização
-      ApiService.saveOrder(order);
+      // Também salvar no armazenamento central para sincronização
+      RealtimeApi.saveOrder(order);
       
       // Disparar evento para TODAS as janelas/abas
       this.notifyChange();
@@ -50,7 +50,10 @@ export const OrderManager = {
         order.id === orderId ? { ...order, status: newStatus, updatedAt: new Date().toISOString() } : order
       );
       localStorage.setItem('subcashs_orders', JSON.stringify(updated));
-      console.log('✅ Status atualizado:', orderId, '->', newStatus);
+      console.log('✅ Status atualizado localmente:', orderId, '->', newStatus);
+      
+      // Também atualizar no armazenamento central
+      RealtimeApi.updateOrderStatus(orderId, newStatus);
       
       // Notificar mudanças
       this.notifyChange();
@@ -88,7 +91,10 @@ export const OrderManager = {
         order.id === orderId ? { ...order, status: 'rejected', rejectedAt: new Date().toISOString(), rejectionReason: reason } : order
       );
       localStorage.setItem('subcashs_orders', JSON.stringify(updated));
-      console.log('❌ Pedido recusado:', orderId);
+      console.log('❌ Pedido recusado localmente:', orderId);
+      
+      // Também recusar no armazenamento central
+      RealtimeApi.rejectOrder(orderId, reason);
       
       this.notifyChange();
       
